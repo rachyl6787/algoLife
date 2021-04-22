@@ -1,20 +1,18 @@
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { useHistory } from 'react-router-dom';
 import CodeEditor from './CodeEditor';
 import testHtml from '../browserTest/testhtml';
 import { updateTest, updateCode, updateAlgos } from '../actions/actions';
 import { algorithms } from '../constants';
 
 function MainContainer(props: any) {
-  console.log(props);
-  console.log('props.algorithm.prompt');
   const [frameHtml, setFrameHtml] = React.useState('');
-  const history = useHistory();
+  const [alg, setAlg] = React.useState({ ...props.algorithm });
+  const [saved, setSaved] = React.useState(false);
 
   const runTest = () => {
-    if (props.algorithm.test) {
-      const test = testHtml.replace('__TESTHERE__', props.algorithm.test);
+    if (alg.test) {
+      const test = testHtml.replace('__TESTHERE__', alg.test);
       setFrameHtml(test.replace('__SOLUTIONHERE__', props.code));
     }
   };
@@ -24,17 +22,17 @@ function MainContainer(props: any) {
   }, [props.algorithm]);
 
   const markSolved = () => {
-    const newEl = { ...props.algorithm, solved: !props.algorithm.solved };
+    const newEl = { ...alg, solved: !alg.solved };
     const filteredAlgos = props.algos.filter(
       (algo: algorithms) => algo._id !== props.algorithm._id
     );
 
     const body = {
       user_id: props.user._id,
-      algorithm_id: props.algorithm._id,
+      algorithm_id: alg._id,
     };
 
-    const endpoint = props.algorithm.solved ? '/algos/unsolve' : '/algos/solve';
+    const endpoint = alg.solved ? '/algos/unsolve' : '/algos/solve';
 
     fetch(endpoint, {
       method: 'POST',
@@ -45,20 +43,21 @@ function MainContainer(props: any) {
       .then((data) => {
         if (data) {
           props.updateAlgos([...filteredAlgos, newEl]);
-          history.push('/profile');
+          setAlg(newEl);
         }
       })
       .catch((err) => console.log('err from Profile ', err));
   };
 
   const saveSolution = () => {
-    const newEl = { ...props.algorithm, solution: props.code };
+    setSaved(true);
+    const newEl = { ...alg, solution: props.code };
     const filteredAlgos = props.algos.filter(
-      (algo: algorithms) => algo._id !== props.algorithm._id
+      (algo: algorithms) => algo._id !== alg._id
     );
     const body = {
       user_id: props.user._id,
-      algorithm_id: props.algorithm._id,
+      algorithm_id: alg._id,
       solution: props.code,
     };
     fetch('algos/solution', {
@@ -68,39 +67,52 @@ function MainContainer(props: any) {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data) props.updateAlgos([...filteredAlgos, newEl]);
+        if (data) {
+          setAlg(newEl);
+          props.updateAlgos([...filteredAlgos, newEl]);
+        }
       })
       .catch((err) => console.log('err from Profile ', err));
   };
 
   React.useEffect(() => {
-    if (props.algorithm.solution) props.updateCode(props.algorithm.solution);
+    if (alg.solution) props.updateCode(alg.solution);
   }, []);
 
   return (
     <div id="algoContainer">
       <div id="algoHeader">
-        <h1 id="algoName">{props.algorithm.name}</h1>
-        <h4 id="algoPrompt"> {props.algorithm.prompt}</h4>
+        <h1 id="algoName">{alg.name}</h1>
+        <h4 id="algoPrompt"> {alg.prompt}</h4>
       </div>
       <div className="codeAndTest">
         <div id="codeEditorContainer">
-          <CodeEditor code={props.code} solution={props.algorithm.solution} />
+          <CodeEditor
+            code={props.code}
+            solution={alg.solution}
+            setSaved={setSaved}
+          />
         </div>
         <div id="testContainer">
           <iframe
             id="test-frame"
             style={{ height: '300px', width: '400px' }}
-            srcDoc={frameHtml || '<h1>Test here</h1>'}
+            srcDoc={frameHtml || '<h1></h1>'}
           />
-          <div className="MainContainer-buttons">
-            <button id="runTestButton" onClick={runTest}>
-             Run test
+          <div className="algoButtonsContainer">
+            <button
+              className="algoButtons"
+              id="runTestButton"
+              onClick={runTest}
+            >
+              Run test
             </button>
-            <button onClick={markSolved}>
-              Mark as {props.algorithm.solved ? 'unsolved' : 'solved'}
+            <button className="algoButtons" onClick={markSolved}>
+              Mark as {alg.solved ? 'unsolved' : 'solved'}
             </button>
-            <button onClick={saveSolution}>Save Solution!</button>
+            <button className="algoButtons" onClick={saveSolution}>
+              {saved ? 'Saved!' : 'Save Solution'}
+            </button>
           </div>
         </div>
       </div>
