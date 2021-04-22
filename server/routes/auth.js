@@ -20,7 +20,6 @@ router.post(
   authController.createUserObject,
   authController.createJWT,
   (req, res) => {
-    console.log(res.locals.user);
     res.status(200).json(res.locals.user);
   }
 );
